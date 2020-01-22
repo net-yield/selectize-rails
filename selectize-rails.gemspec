@@ -6,8 +6,8 @@ require 'selectize-rails/version'
 Gem::Specification.new do |spec|
   spec.name          = "selectize-rails"
   spec.version       = Selectize::Rails::VERSION
-  spec.authors       = ["Manuel van Rijn"]
-  spec.email         = ["manuel@manuelvanrijn.nl"]
+  spec.authors       = ["Manuel van Rijn", "Alabi Kehinde", "Evan Gallup"]
+  spec.email         = ["manuel@manuelvanrijn.nl", "evangallup@gmail.com"]
   spec.description   = %q{A small gem for putting selectize.js into the Rails asset pipeline}
   spec.summary       = %q{an asset gemification of the selectize.js plugin}
   spec.homepage      = "https://github.com/manuelvanrijn/selectize-rails"
