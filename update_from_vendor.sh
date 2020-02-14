@@ -2,7 +2,7 @@
 
 # Checkout vendor repo
 echo "Cloning selectize/selectize.js github repo into tmp_vendor"
-git clone https://github.com/egallup02360/selectize.js.git tmp_vendor
+git clone --single-branch --branch 0.12.2 https://github.com/egallup02360/selectize.js.git tmp_vendor
 
 # Copy files
 echo "Copying selectize.js"

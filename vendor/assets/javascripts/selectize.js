@@ -635,7 +635,7 @@
 }));
 
 /**
- * selectize.js (v0.12.6)
+ * selectize.js (v0.12.2)
  * Copyright (c) 2013–2015 Brian Reavis & contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
@@ -670,8 +670,6 @@
 	
 		var highlight = function(node) {
 			var skip = 0;
-			// Wrap matching part of text node with highlighting <span>, e.g.
-			// Soccer  ->  <span class="highlight">Soc</span>cer  for regex = /soc/i
 			if (node.nodeType === 3) {
 				var pos = node.data.search(regex);
 				if (pos >= 0 && node.data.length > 0) {
@@ -685,10 +683,7 @@
 					middlebit.parentNode.replaceChild(spannode, middlebit);
 					skip = 1;
 				}
-			} 
-			// Recurse element node, looking for child text nodes to highlight, unless element 
-			// is childless, <script>, <style>, or already highlighted: <span class="hightlight">
-			else if (node.nodeType === 1 && node.childNodes && !/(script|style)/i.test(node.tagName) && ( node.className !== 'highlight' || node.tagName !== 'SPAN' )) {
+			} else if (node.nodeType === 1 && node.childNodes && !/(script|style)/i.test(node.tagName)) {
 				for (var i = 0; i < node.childNodes.length; ++i) {
 					i += highlight(node.childNodes[i]);
 				}
@@ -700,20 +695,6 @@
 			highlight(this);
 		});
 	};
-	
-	/**
-	 * removeHighlight fn copied from highlight v5 and
-	 * edited to remove with() and pass js strict mode
-	 */
-	$.fn.removeHighlight = function() {
-		return this.find("span.highlight").each(function() {
-			this.parentNode.firstChild.nodeName;
-			var parent = this.parentNode;
-			parent.replaceChild(this.firstChild, this);
-			parent.normalize();
-		}).end();
-	};
-	
 	
 	var MicroEvent = function() {};
 	MicroEvent.prototype = {
@@ -777,8 +758,7 @@
 	var TAG_INPUT     = 2;
 	
 	// for now, android support in general is too spotty to support validity
-	var SUPPORTS_VALIDITY_API = !/android/i.test(window.navigator.userAgent) && !!document.createElement('input').validity;
-	
+	var SUPPORTS_VALIDITY_API = !/android/i.test(window.navigator.userAgent) && !!document.createElement('form').validity;
 	
 	var isset = function(object) {
 		return typeof object !== 'undefined';
@@ -1011,20 +991,16 @@
 			return 0;
 		}
 	
-		if (!Selectize.$testInput) {
-			Selectize.$testInput = $('<span />').css({
-				position: 'absolute',
-				top: -99999,
-				left: -99999,
-				width: 'auto',
-				padding: 0,
-				whiteSpace: 'pre'
-			}).appendTo('body');
-		}
+		var $test = $('<test>').css({
+			position: 'absolute',
+			top: -99999,
+			left: -99999,
+			width: 'auto',
+			padding: 0,
+			whiteSpace: 'pre'
+		}).text(str).appendTo('body');
 	
-		Selectize.$testInput.text(str);
-	
-		transferStyles($parent, Selectize.$testInput, [
+		transferStyles($parent, $test, [
 			'letterSpacing',
 			'fontSize',
 			'fontFamily',
@@ -1032,7 +1008,10 @@
 			'textTransform'
 		]);
 	
-		return Selectize.$testInput.width();
+		var width = $test.width();
+		$test.remove();
+	
+		return width;
 	};
 	
 	/**
@@ -1060,10 +1039,9 @@
 			if (e.type && e.type.toLowerCase() === 'keydown') {
 				keyCode = e.keyCode;
 				printable = (
+					(keyCode >= 97 && keyCode <= 122) || // a-z
+					(keyCode >= 65 && keyCode <= 90)  || // A-Z
 					(keyCode >= 48 && keyCode <= 57)  || // 0-9
-					(keyCode >= 65 && keyCode <= 90)   || // a-z
-					(keyCode >= 96 && keyCode <= 111)  || // numpad 0-9, numeric operators
-					(keyCode >= 186 && keyCode <= 222) || // semicolon, equal, comma, dash, etc.
 					keyCode === 32 // space
 				);
 	
@@ -1110,20 +1088,6 @@
 		return tmp.innerHTML;
 	};
 	
-	var logError = function(message, options){
-		if(!options) options = {};
-		var component = "Selectize";
-	
-		console.error(component + ": " + message)
-	
-		if(options.explanation){
-			// console.group is undefined in <IE11
-			if(console.group) console.group();
-			console.error(options.explanation);
-			if(console.group) console.groupEnd();
-		}
-	}
-	
 	
 	var Selectize = function($input, settings) {
 		var key, i, n, dir, input, self = this;
@@ -1146,7 +1110,6 @@
 	
 			eventNS          : '.selectize' + (++Selectize.count),
 			highlightedValue : null,
-			isBlurring       : false,
 			isOpen           : false,
 			isDisabled       : false,
 			isRequired       : $input.is('[required]'),
@@ -1214,18 +1177,7 @@
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	
 	MicroEvent.mixin(Selectize);
-	
-	if(typeof MicroPlugin !== "undefined"){
-		MicroPlugin.mixin(Selectize);
-	}else{
-		logError("Dependency MicroPlugin is missing",
-			{explanation:
-				"Make sure you either: (1) are using the \"standalone\" "+
-				"version of Selectize, or (2) require MicroPlugin before you "+
-				"load Selectize."}
-		);
-	}
-	
+	MicroPlugin.mixin(Selectize);
 	
 	// methods
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1254,7 +1206,6 @@
 			var timeout_focus;
 			var classes;
 			var classes_plugins;
-			var inputId;
 	
 			inputMode         = self.settings.mode;
 			classes           = $input.attr('class') || '';
@@ -1265,11 +1216,6 @@
 			$dropdown_parent  = $(settings.dropdownParent || $wrapper);
 			$dropdown         = $('<div>').addClass(settings.dropdownClass).addClass(inputMode).hide().appendTo($dropdown_parent);
 			$dropdown_content = $('<div>').addClass(settings.dropdownContentClass).appendTo($dropdown);
-	
-			if(inputId = $input.attr('id')) {
-				$control_input.attr('id', inputId + '-selectized');
-				$("label[for='"+inputId+"']").attr('for', inputId + '-selectized');
-			}
 	
 			if(self.settings.copyClassesToDropdown) {
 				$dropdown.addClass(classes);
@@ -1306,7 +1252,6 @@
 			if ($input.attr('autocapitalize')) {
 				$control_input.attr('autocapitalize', $input.attr('autocapitalize'));
 			}
-			$control_input[0].type = $input[0].type;
 	
 			self.$wrapper          = $wrapper;
 			self.$control          = $control;
@@ -1314,7 +1259,6 @@
 			self.$dropdown         = $dropdown;
 			self.$dropdown_content = $dropdown_content;
 	
-			$dropdown.on('mouseenter mousedown click', '[data-disabled]>[data-selectable]', function(e) { e.stopImmediatePropagation(); });
 			$dropdown.on('mouseenter', '[data-selectable]', function() { return self.onOptionHover.apply(self, arguments); });
 			$dropdown.on('mousedown click', '[data-selectable]', function() { return self.onOptionSelect.apply(self, arguments); });
 			watchChildEvent($control, 'mousedown', '*:not(input)', function() { return self.onItemSelect.apply(self, arguments); });
@@ -1490,9 +1434,7 @@
 	
 			// necessary for mobile webkit devices (manual focus triggering
 			// is ignored unless invoked within a click event)
-	    // also necessary to reopen a dropdown that has been closed by
-	    // closeAfterSelect
-			if (!self.isFocused || !self.isOpen) {
+			if (!self.isFocused) {
 				self.focus();
 				e.preventDefault();
 			}
@@ -1550,26 +1492,19 @@
 		 */
 		onPaste: function(e) {
 			var self = this;
-	
 			if (self.isFull() || self.isInputHidden || self.isLocked) {
 				e.preventDefault();
-				return;
-			}
-	
-			// If a regex or string is included, this will split the pasted
-			// input and create Items for each separate value
-			if (self.settings.splitOn) {
-	
-				// Wait for pasted text to be recognized in value
-				setTimeout(function() {
-					var pastedText = self.$control_input.val();
-					if(!pastedText.match(self.settings.splitOn)){ return }
-	
-					var splitInput = $.trim(pastedText).split(self.settings.splitOn);
-					for (var i = 0, n = splitInput.length; i < n; i++) {
-						self.createItem(splitInput[i]);
-					}
-				}, 0);
+			} else {
+				// If a regex or string is included, this will split the pasted
+				// input and create Items for each separate value
+				if (self.settings.splitOn) {
+					setTimeout(function() {
+						var splitInput = $.trim(self.$control_input.val() || '').split(self.settings.splitOn);
+						for (var i = 0, n = splitInput.length; i < n; i++) {
+							self.createItem(splitInput[i]);
+						}
+					}, 0);
+				}
 			}
 		},
 	
@@ -1778,14 +1713,12 @@
 				self.refreshState();
 	
 				// IE11 bug: element still marked as active
-				dest && dest.focus && dest.focus();
+				dest && dest.focus();
 	
-				self.isBlurring = false;
 				self.ignoreFocus = false;
 				self.trigger('blur');
 			};
 	
-			self.isBlurring = true;
 			self.ignoreFocus = true;
 			if (self.settings.create && self.settings.createOnBlur) {
 				self.createItem(null, false, deactivate);
@@ -2123,8 +2056,7 @@
 			return {
 				fields      : settings.searchField,
 				conjunction : settings.searchConjunction,
-				sort        : sort,
-				nesting     : settings.nesting
+				sort        : sort
 			};
 		},
 	
@@ -2258,12 +2190,9 @@
 			$dropdown_content.html(html);
 	
 			// highlight matching terms inline
-			if (self.settings.highlight) {
-				$dropdown_content.removeHighlight();
-				if (results.query.length && results.tokens.length) {
-					for (i = 0, n = results.tokens.length; i < n; i++) {
-						highlight($dropdown_content, results.tokens[i].regex);
-					}
+			if (self.settings.highlight && results.query.length && results.tokens.length) {
+				for (i = 0, n = results.tokens.length; i < n; i++) {
+					highlight($dropdown_content, results.tokens[i].regex);
 				}
 			}
 	
@@ -2498,15 +2427,10 @@
 			self.loadedSearches = {};
 			self.userOptions = {};
 			self.renderCache = {};
-			var options = self.options;
-			$.each(self.options, function(key, value) {
-				if(self.items.indexOf(key) == -1) {
-					delete options[key];
-				}
-			});
-			self.options = self.sifter.items = options;
+			self.options = self.sifter.items = {};
 			self.lastQuery = null;
 			self.trigger('option_clear');
+			self.clear();
 		},
 	
 		/**
@@ -2576,23 +2500,11 @@
 		 * @param {boolean} silent
 		 */
 		addItems: function(values, silent) {
-			this.buffer = document.createDocumentFragment();
-	
-			var childNodes = this.$control[0].childNodes;
-			for (var i = 0; i < childNodes.length; i++) {
-				this.buffer.appendChild(childNodes[i]);
-			}
-	
 			var items = $.isArray(values) ? values : [values];
 			for (var i = 0, n = items.length; i < n; i++) {
 				this.isPending = (i < n - 1);
 				this.addItem(items[i], silent);
 			}
-	
-			var control = this.$control[0];
-			control.insertBefore(this.buffer, control.firstChild);
-	
-			this.buffer = null;
 		},
 	
 		/**
@@ -2645,16 +2557,13 @@
 					// hide the menu if the maximum number of items have been selected or no options are left
 					if (!$options.length || self.isFull()) {
 						self.close();
-					} else if (!self.isPending) {
+					} else {
 						self.positionDropdown();
 					}
 	
 					self.updatePlaceholder();
 					self.trigger('item_add', value, $item);
-	
-					if (!self.isPending) {
-						self.updateOriginalInput({silent: silent});
-					}
+					self.updateOriginalInput({silent: silent});
 				}
 			});
 		},
@@ -2779,26 +2688,12 @@
 		 * and CSS classes.
 		 */
 		refreshState: function() {
-			this.refreshValidityState();
-			this.refreshClasses();
-		},
-	
-		/**
-		 * Update the `required` attribute of both input and control input.
-		 *
-		 * The `required` property needs to be activated on the control input
-		 * for the error to be displayed at the right place. `required` also
-		 * needs to be temporarily deactivated on the input since the input is
-		 * hidden and can't show errors.
-		 */
-		refreshValidityState: function() {
-			if (!this.isRequired) return false;
-	
-			var invalid = !this.items.length;
-	
-			this.isInvalid = invalid;
-			this.$control_input.prop('required', invalid);
-			this.$input.prop('required', !invalid);
+			var invalid, self = this;
+			if (self.isRequired) {
+				if (self.items.length) self.isInvalid = false;
+				self.$control_input.prop('required', invalid);
+			}
+			self.refreshClasses();
 		},
 	
 		/**
@@ -2909,13 +2804,6 @@
 	
 			if (self.settings.mode === 'single' && self.items.length) {
 				self.hideInput();
-	
-				// Do not trigger blur while inside a blur event,
-				// this fixes some weird tabbing behavior in FF and IE.
-				// See #1164
-				if (!self.isBlurring) {
-					self.$control_input.blur(); // close keyboard on iOS
-				}
 			}
 	
 			self.isOpen = false;
@@ -2936,7 +2824,7 @@
 			offset.top += $control.outerHeight(true);
 	
 			this.$dropdown.css({
-				width : $control[0].getBoundingClientRect().width,
+				width : $control.outerWidth(),
 				top   : offset.top,
 				left  : offset.left
 			});
@@ -2972,15 +2860,11 @@
 		 */
 		insertAtCaret: function($el) {
 			var caret = Math.min(this.caretPos, this.items.length);
-			var el = $el[0];
-			var target = this.buffer || this.$control[0];
-	
 			if (caret === 0) {
-				target.insertBefore(el, target.firstChild);
+				this.$control.prepend($el);
 			} else {
-				target.insertBefore(el, target.childNodes[caret]);
+				$(this.$control[0].childNodes[caret]).before($el);
 			}
-	
 			this.setCaret(caret + 1);
 		},
 	
@@ -3216,11 +3100,6 @@
 			self.$control_input.removeData('grow');
 			self.$input.removeData('selectize');
 	
-			if (--Selectize.count == 0 && Selectize.$testInput) {
-				Selectize.$testInput.remove();
-				Selectize.$testInput = undefined;
-			}
-	
 			$(window).off(eventNS);
 			$(document).off(eventNS);
 			$(document.body).off(eventNS);
@@ -3263,16 +3142,11 @@
 	
 			// add mandatory attributes
 			if (templateName === 'option' || templateName === 'option_create') {
-				if (!data[self.settings.disabledField]) {
-					html.attr('data-selectable', '');
-				}
+				html.attr('data-selectable', '');
 			}
 			else if (templateName === 'optgroup') {
 				id = data[self.settings.optgroupValueField] || '';
 				html.attr('data-group', id);
-				if(data[self.settings.disabledField]) {
-					html.attr('data-disabled', '');
-				}
 			}
 			if (templateName === 'option' || templateName === 'item') {
 				html.attr('data-value', value || '');
@@ -3354,7 +3228,6 @@
 		optgroupField: 'optgroup',
 		valueField: 'value',
 		labelField: 'text',
-		disabledField: 'disabled',
 		optgroupLabelField: 'label',
 		optgroupValueField: 'value',
 		lockOptgroupOrder: false,
@@ -3411,7 +3284,6 @@
 		var attr_data            = settings.dataAttr;
 		var field_label          = settings.labelField;
 		var field_value          = settings.valueField;
-		var field_disabled       = settings.disabledField;
 		var field_optgroup       = settings.optgroupField;
 		var field_optgroup_label = settings.optgroupLabelField;
 		var field_optgroup_value = settings.optgroupValueField;
@@ -3492,7 +3364,6 @@
 				var option             = readData($option) || {};
 				option[field_label]    = option[field_label] || $option.text();
 				option[field_value]    = option[field_value] || value;
-				option[field_disabled] = option[field_disabled] || $option.prop('disabled');
 				option[field_optgroup] = option[field_optgroup] || group;
 	
 				optionsMap[value] = option;
@@ -3513,7 +3384,6 @@
 					optgroup = readData($optgroup) || {};
 					optgroup[field_optgroup_label] = id;
 					optgroup[field_optgroup_value] = id;
-					optgroup[field_disabled] = $optgroup.prop('disabled');
 					settings_element.optgroups.push(optgroup);
 				}
 	
@@ -3771,8 +3641,7 @@
 				 * @return {string}
 				 */
 				var append = function(html_container, html_element) {
-					return $('<span>').append(html_container)
-						.append(html_element);
+					return html_container + html_element;
 				};
 	
 				thisRef.setup = (function() {
