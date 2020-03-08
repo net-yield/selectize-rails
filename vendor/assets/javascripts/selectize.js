@@ -3889,3 +3889,4 @@
 
 	return Selectize;
 }));
+window.selectize_loaded = true;
